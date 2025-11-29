@@ -446,6 +446,372 @@
 
         // Device Toggles
         btnDesktop.addEventListener('click', () => switchDeviceMode('desktop'));
+        btnMob            100% { opacity: 0.2; transform: scale(0.8); }
+        }
+
+        .markdown-content pre {
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #334155;
+        }
+        .markdown-content code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+        .markdown-content p {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+        
+        /* Highlight active tab */
+        .tab-active {
+            background-color: #1e293b;
+            color: white;
+            border-color: #38bdf8;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="h-14 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center gap-2">
+            <i data-lucide="code-2" class="text-blue-500 w-6 h-6"></i>
+            <span class="font-bold text-lg tracking-tight">AI Code Forge</span>
+        </div>
+
+        <!-- Layout Mode Selector -->
+        <div class="flex items-center gap-2">
+            <button id="btn-mode-split" class="px-3 py-1 text-sm font-medium rounded-md border border-transparent hover:bg-slate-700/50 transition-colors tab-active" title="Split View (Code & Preview)">
+                <i data-lucide="layout-split" class="w-4 h-4 inline-block align-text-bottom"></i> Split
+            </button>
+            <button id="btn-mode-editor" class="px-3 py-1 text-sm font-medium rounded-md border border-transparent hover:bg-slate-700/50 transition-colors text-slate-400" title="Maximize Editor">
+                <i data-lucide="code" class="w-4 h-4 inline-block align-text-bottom"></i> Code Max
+            </button>
+            <button id="btn-mode-preview" class="px-3 py-1 text-sm font-medium rounded-md border border-transparent hover:bg-slate-700/50 transition-colors text-slate-400" title="Maximize Preview">
+                <i data-lucide="monitor" class="w-4 h-4 inline-block align-text-bottom"></i> Preview Max
+            </button>
+        </div>
+
+        <!-- Right Side Controls -->
+        <div class="flex items-center gap-3">
+            
+            <!-- Manual Run Button -->
+            <button id="btn-run" class="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors shadow-lg shadow-green-900/20" title="Manually run preview">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                <span>Run</span>
+            </button>
+
+            <!-- Device Toggles (Only visible in Preview/Split mode) -->
+            <div id="device-controls" class="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <button id="btn-desktop" class="p-1.5 rounded-md text-white bg-slate-700 transition-colors" title="Desktop View">
+                    <i data-lucide="monitor" class="w-4 h-4"></i>
+                </button>
+                <button id="btn-mobile" class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors" title="Mobile View">
+                    <i data-lucide="smartphone" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <!-- Chat Toggle Button -->
+            <button id="btn-toggle-chat" class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20" title="Toggle AI Assistant">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">AI Chat</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Code Panel (Dynamic Width) -->
+        <section id="editor-section" class="layout-panel flex flex-col border-r border-slate-700 min-w-0 bg-slate-900 relative group w-1/2">
+            <div class="h-8 bg-slate-900 border-b border-slate-700 flex items-center px-4 justify-between text-xs text-slate-500">
+                <span>Code Editor</span>
+            </div>
+            <textarea 
+                id="code-editor" 
+                class="flex-1 w-full h-full bg-slate-900 text-slate-100 p-4 font-mono text-sm resize-none focus:outline-none border-none leading-6"
+                placeholder="<!-- Write your HTML code here... -->"
+                spellcheck="false"
+            ></textarea>
+        </section>
+
+        <!-- Preview Panel (Dynamic Width) -->
+        <section id="preview-section" class="layout-panel flex flex-col bg-slate-950 min-w-0 relative w-1/2">
+            <div class="h-8 bg-slate-900 border-b border-slate-700 flex items-center px-4 justify-between text-xs text-slate-500">
+                <span>Live Preview</span>
+                <span id="preview-size-label">Desktop (100%)</span>
+            </div>
+            <div class="flex-1 w-full h-full overflow-hidden bg-white/5 relative flex justify-center bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L2NpcmNsZT48L2N2Zz4=')]">
+                <iframe id="preview-frame" class="preview-desktop bg-white" sandbox="allow-scripts allow-modals"></iframe>
+            </div>
+        </section>
+
+        <!-- AI Chat Sidebar (Fixed Width, Toggleable) -->
+        <aside id="chat-sidebar" class="w-96 flex flex-col border-l border-slate-700 bg-slate-900 shrink-0 absolute lg:static right-0 h-full z-20 transform transition-transform duration-300 shadow-2xl lg:shadow-none">
+            
+            <!-- Chat Header -->
+            <div class="h-12 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900">
+                <div class="flex items-center gap-2 text-purple-400">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span class="font-semibold text-sm">AI Assistant</span>
+                </div>
+                <button id="btn-close-chat" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+                <!-- Welcome Message -->
+                <div class="flex gap-3 text-sm text-slate-300">
+                    <div class="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center shrink-0 border border-purple-700/50">
+                        <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <p>Hello! I'm your coding assistant. Use the buttons above to switch between Split, Code Max, and Preview Max views, and click the **Run** button for manual updates!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900">
+                <div class="relative">
+                    <textarea 
+                        id="chat-input"
+                        rows="1" 
+                        class="w-full bg-slate-800 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 resize-none overflow-hidden"
+                        placeholder="Ask AI to generate code..."
+                    ></textarea>
+                    <button 
+                        id="btn-send"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled
+                    >
+                        <i data-lucide="send-horizontal" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-2 text-center">
+                    Gemini 2.5 Flash • AI can make mistakes.
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <script>
+        // --- Configuration ---
+        const DEFAULT_CODE = `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background: linear-gradient(135deg, #1e3a8a 0%, #0c4a6e 100%);
+            color: white;
+            text-align: center;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 90%;
+            width: 400px;
+        }
+        h1 { margin: 0 0 1rem 0; font-size: 2rem; }
+        p { margin-bottom: 1.5rem; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        button:hover { background-color: #2563eb; }
+        button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Super Code Forge</h1>
+        <p>Auto-run is active, or click the **Run** button!</p>
+        <!-- Fix: Replaced alert() with console log for iframe compatibility -->
+        <button onclick="console.log('Manual run test successful (alert avoided).'); this.textContent = 'Tested!'; setTimeout(() => this.textContent = 'Run Test', 1000);">Run Test</button>
+    </div>
+</body>
+</html>`;
+
+        // --- DOM Elements ---
+        const editor = document.getElementById('code-editor');
+        const previewFrame = document.getElementById('preview-frame');
+        const editorSection = document.getElementById('editor-section');
+        const previewSection = document.getElementById('preview-section');
+        const previewLabel = document.getElementById('preview-size-label');
+        const deviceControls = document.getElementById('device-controls');
+        
+        const btnRun = document.getElementById('btn-run'); // Manual Run Button
+        const btnModeSplit = document.getElementById('btn-mode-split');
+        const btnModeEditor = document.getElementById('btn-mode-editor');
+        const btnModePreview = document.getElementById('btn-mode-preview');
+        const layoutButtons = [btnModeSplit, btnModeEditor, btnModePreview];
+
+        const btnDesktop = document.getElementById('btn-desktop');
+        const btnMobile = document.getElementById('btn-mobile');
+        
+        // Chat Elements
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const btnToggleChat = document.getElementById('btn-toggle-chat');
+        const btnCloseChat = document.getElementById('btn-close-chat');
+
+        // --- State ---
+        let currentLayoutMode = 'split'; // 'split', 'editor-max', 'preview-max'
+        let currentDeviceMode = 'desktop'; // 'desktop', 'mobile'
+
+        // --- Utility Functions ---
+        // Debounce utility to prevent excessive updates while typing
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+        
+        // Extracts the content of the first code block (html, js, css) from markdown text
+        function extractFullCodeBlock(markdownText) {
+            // Regex to find the first code block (capture group 2 contains the code content)
+            const codeMatch = markdownText.match(/```(html|javascript|js|css)\n([\s\S]*?)```/i);
+            if (codeMatch && codeMatch[2]) {
+                return codeMatch[2].trim();
+            }
+            return null;
+        }
+
+        // --- Core Editor Functions ---
+        function updatePreview() {
+            const code = editor.value;
+            previewFrame.srcdoc = code;
+        }
+
+        // Debounced auto-run function
+        const debouncedUpdatePreview = debounce(updatePreview, 300); // 300ms delay
+
+        // --- Layout Management ---
+        function updateLayout() {
+            // Reset classes
+            editorSection.className = 'layout-panel flex flex-col min-w-0 bg-slate-900 relative group';
+            previewSection.className = 'layout-panel flex flex-col bg-slate-950 min-w-0 relative';
+            editorSection.style.borderRight = '1px solid #334155';
+            
+            // Apply new classes based on mode
+            if (currentLayoutMode === 'split') {
+                editorSection.classList.add('w-1/2');
+                previewSection.classList.add('w-1/2');
+                previewSection.style.display = 'flex';
+                editorSection.style.display = 'flex';
+                deviceControls.style.display = 'flex';
+            } else if (currentLayoutMode === 'editor-max') {
+                editorSection.classList.add('w-full');
+                previewSection.classList.add('w-0', 'hidden');
+                editorSection.style.borderRight = 'none';
+                editorSection.style.display = 'flex';
+                deviceControls.style.display = 'none';
+            } else if (currentLayoutMode === 'preview-max') {
+                editorSection.classList.add('w-0', 'hidden');
+                previewSection.classList.add('w-full');
+                previewSection.style.display = 'flex';
+                deviceControls.style.display = 'flex';
+            }
+
+            // Update button styling
+            layoutButtons.forEach(btn => btn.classList.remove('tab-active', 'text-slate-400'));
+            
+            if (currentLayoutMode === 'split') {
+                btnModeSplit.classList.add('tab-active');
+                btnModeEditor.classList.add('text-slate-400');
+                btnModePreview.classList.add('text-slate-400');
+            } else if (currentLayoutMode === 'editor-max') {
+                btnModeEditor.classList.add('tab-active');
+                btnModeSplit.classList.add('text-slate-400');
+                btnModePreview.classList.add('text-slate-400');
+            } else if (currentLayoutMode === 'preview-max') {
+                btnModePreview.classList.add('tab-active');
+                btnModeSplit.classList.add('text-slate-400');
+                btnModeEditor.classList.add('text-slate-400');
+            }
+        }
+
+        function switchDeviceMode(mode) {
+            currentDeviceMode = mode;
+            if (mode === 'desktop') {
+                previewFrame.className = 'preview-desktop bg-white';
+                previewLabel.innerText = 'Desktop (100%)';
+                btnDesktop.classList.add('bg-slate-700', 'text-white');
+                btnMobile.classList.remove('bg-slate-700', 'text-white');
+                btnMobile.classList.add('text-slate-400');
+            } else {
+                previewFrame.className = 'preview-mobile bg-white shadow-xl';
+                previewLabel.innerText = 'Mobile (375px)';
+                btnMobile.classList.add('bg-slate-700', 'text-white');
+                btnDesktop.classList.remove('bg-slate-700', 'text-white');
+                btnDesktop.classList.add('text-slate-400');
+            }
+        }
+        
+        // Chat UI Toggles
+        function toggleChat(show) {
+            if (show === undefined) {
+                // Toggle if state is not explicitly set
+                show = chatSidebar.classList.contains('translate-x-full');
+            }
+
+            if (show) {
+                chatSidebar.classList.remove('translate-x-full');
+            } else {
+                chatSidebar.classList.add('translate-x-full');
+            }
+        }
+
+        // --- Initialization ---
+        lucide.createIcons();
+        editor.value = DEFAULT_CODE;
+        updateLayout(); 
+        switchDeviceMode('desktop'); // Initialize device mode
+        updatePreview(); // Initial run
+
+        // --- Event Listeners ---
+        
+        // Manual Run: Trigger immediate update
+        btnRun.addEventListener('click', updatePreview);
+
+        // Layout Toggles
+        btnModeSplit.addEventListener('click', () => { currentLayoutMode = 'split'; updateLayout(); });
+        btnModeEditor.addEventListener('click', () => { currentLayoutMode = 'editor-max'; updateLayout(); });
+        btnModePreview.addEventListener('click', () => { currentLayoutMode = 'preview-max'; updateLayout(); });
+
+        // Device Toggles
+        btnDesktop.addEventListener('click', () => switchDeviceMode('desktop'));
         btnMobile = document.getElementById('btn-mobile');
         
         // Chat Elements
