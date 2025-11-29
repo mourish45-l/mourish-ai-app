@@ -3,554 +3,827 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mourish AI </title>
-    <!-- Load Tailwind CSS -->
+    <title>AI Code Forge</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Use Inter font family -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0d1117; /* Deep Charcoal Background */
-            overflow-x: hidden; /* Prevent body scroll */
-        }
-        /* Full screen height */
-        #app-container {
-            height: 100vh;
-            max-height: 100vh;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+            overflow: hidden; /* App-like feel */
         }
 
-        /* Editor and Panel styling */
-        .panel {
-            background-color: #161b22;
-            border: 1px solid #30363d;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border-radius: 1rem;
-            transition: all 0.3s ease-in-out;
-        }
-        
-        /* Mobile Split View Heights */
-        @media (max-width: 1023px) { /* Adjust heights for non-desktop (mobile/tablet) */
-            .mobile-split-height {
-                min-height: 40vh; /* Ensure visibility before scroll */
-            }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Custom scrollbar for a darker aesthetic */
-        .custom-scroll::-webkit-scrollbar {
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
-        .custom-scroll::-webkit-scrollbar-thumb {
-            background-color: #30363d;
+        ::-webkit-scrollbar-track {
+            background: #1e293b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; 
             border-radius: 4px;
         }
-        .custom-scroll::-webkit-scrollbar-track {
-            background-color: #0d1117;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
         }
 
-        /* Preview iframe specific sizing */
-        #live-preview {
+        /* Editor specific styles */
+        #code-editor {
+            tab-size: 2;
+            caret-color: #38bdf8;
+        }
+
+        /* Device frames */
+        .preview-mobile {
+            width: 375px;
+            height: 100%;
+            border-left: 1px solid #334155;
+            border-right: 1px solid #334155;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+        
+        .preview-desktop {
             width: 100%;
             height: 100%;
-            transition: width 0.3s ease-in-out;
-        }
-        .mobile-view {
-            width: 375px !important; /* iPhone X width */
-            margin: 0 auto;
-            border-radius: 20px;
-            box-shadow: 0 0 0 10px #333;
+            transition: all 0.3s ease;
         }
 
-        /* AI Chat styling */
-        .user-message {
-            background-color: #3B82F6;
-            align-self: flex-end;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 15px 15px 0 15px;
-            max-width: 85%;
+        /* Dynamic Layout Transitions */
+        .layout-panel {
+            transition: width 0.3s ease, min-width 0.3s ease, border-width 0.3s ease;
         }
-        .ai-message {
-            background-color: #059669;
-            align-self: flex-start;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 15px 15px 15px 0;
-            max-width: 85%;
+        
+        /* Loading Dots Animation */
+        .typing-indicator span {
+            animation: blink 1.4s infinite both;
+            height: 6px;
+            width: 6px;
+            background-color: #94a3b8;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 1px;
         }
-        .error-message {
-            background-color: #DC2626; /* Red for error */
-            align-self: flex-start;
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes blink {
+            0% { opacity: 0.2; transform: scale(0.8); }
+            20% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.2; transform: scale(0.8); }
+        }
+
+        .markdown-content pre {
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #334155;
+        }
+        .markdown-content code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+        .markdown-content p {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+        
+        /* Highlight active tab */
+        .tab-active {
+            background-color: #1e293b;
             color: white;
-            padding: 10px 15px;
-            border-radius: 15px 15px 15px 0;
-            max-width: 95%;
-            font-weight: bold;
+            border-color: #38bdf8;
         }
     </style>
 </head>
-<body class="text-gray-100 p-2 md:p-4">
+<body class="h-screen flex flex-col">
 
-    <!-- Main App Container (Full Height) -->
-    <div id="app-container" class="flex flex-col gap-3">
+    <!-- Header -->
+    <header class="h-14 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center gap-2">
+            <i data-lucide="code-2" class="text-blue-500 w-6 h-6"></i>
+            <span class="font-bold text-lg tracking-tight">AI Code Forge</span>
+        </div>
 
-        <!-- Header and View Controls -->
-        <header class="flex flex-col md:flex-row justify-between items-center pb-2 px-2 border-b border-[#30363d]">
-            <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500 mb-2 md:mb-0">
-                <span class="text-xs align-top font-light tracking-widest text-gray-400">MOURISH</span> AI 
-            </h1>
-            <div id="view-controls" class="flex flex-wrap justify-center space-x-2 text-sm">
-                <button data-view="split" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-teal-600/20 text-teal-300 ring-2 ring-teal-600">Split</button>
-                <button data-view="editor" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-gray-600/20 text-gray-300 hover:bg-teal-600/20 hover:text-teal-300">Code</button>
-                <button data-view="preview" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-gray-600/20 text-gray-300 hover:bg-teal-600/20 hover:text-teal-300">Preview</button>
-                <button data-view="ai" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-gray-600/20 text-gray-300 hover:bg-teal-600/20 hover:text-teal-300">AI Chat</button>
+        <!-- Layout Mode Selector -->
+        <div class="flex items-center gap-2">
+            <button id="btn-mode-split" class="px-3 py-1 text-sm font-medium rounded-md border border-transparent hover:bg-slate-700/50 transition-colors tab-active" title="Split View (Code & Preview)">
+                <i data-lucide="layout-split" class="w-4 h-4 inline-block align-text-bottom"></i> Split
+            </button>
+            <button id="btn-mode-editor" class="px-3 py-1 text-sm font-medium rounded-md border border-transparent hover:bg-slate-700/50 transition-colors text-slate-400" title="Maximize Editor">
+                <i data-lucide="code" class="w-4 h-4 inline-block align-text-bottom"></i> Code Max
+            </button>
+            <button id="btn-mode-preview" class="px-3 py-1 text-sm font-medium rounded-md border border-transparent hover:bg-slate-700/50 transition-colors text-slate-400" title="Maximize Preview">
+                <i data-lucide="monitor" class="w-4 h-4 inline-block align-text-bottom"></i> Preview Max
+            </button>
+        </div>
+
+        <!-- Right Side Controls -->
+        <div class="flex items-center gap-3">
+            
+            <!-- Manual Run Button -->
+            <button id="btn-run" class="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors shadow-lg shadow-green-900/20" title="Manually run preview">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                <span>Run</span>
+            </button>
+
+            <!-- Device Toggles (Only visible in Preview/Split mode) -->
+            <div id="device-controls" class="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <button id="btn-desktop" class="p-1.5 rounded-md text-white bg-slate-700 transition-colors" title="Desktop View">
+                    <i data-lucide="monitor" class="w-4 h-4"></i>
+                </button>
+                <button id="btn-mobile" class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors" title="Mobile View">
+                    <i data-lucide="smartphone" class="w-4 h-4"></i>
+                </button>
             </div>
-        </header>
+            
+            <!-- Chat Toggle Button -->
+            <button id="btn-toggle-chat" class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20" title="Toggle AI Assistant">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">AI Chat</span>
+            </button>
+        </div>
+    </header>
 
-        <!-- Main Content Area (Dynamic Layout) -->
-        <div class="flex-grow flex flex-col lg:flex-row gap-4 overflow-y-auto">
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Code Panel (Dynamic Width) -->
+        <section id="editor-section" class="layout-panel flex flex-col border-r border-slate-700 min-w-0 bg-slate-900 relative group w-1/2">
+            <div class="h-8 bg-slate-900 border-b border-slate-700 flex items-center px-4 justify-between text-xs text-slate-500">
+                <span>Code Editor</span>
+            </div>
+            <textarea 
+                id="code-editor" 
+                class="flex-1 w-full h-full bg-slate-900 text-slate-100 p-4 font-mono text-sm resize-none focus:outline-none border-none leading-6"
+                placeholder="<!-- Write your HTML code here... -->"
+                spellcheck="false"
+            ></textarea>
+        </section>
 
-            <!-- CODE & PREVIEW CONTAINER -->
-            <div id="code-preview-container" class="flex flex-col w-full lg:w-7/10 gap-4 mobile-split-height">
+        <!-- Preview Panel (Dynamic Width) -->
+        <section id="preview-section" class="layout-panel flex flex-col bg-slate-950 min-w-0 relative w-1/2">
+            <div class="h-8 bg-slate-900 border-b border-slate-700 flex items-center px-4 justify-between text-xs text-slate-500">
+                <span>Live Preview</span>
+                <span id="preview-size-label">Desktop (100%)</span>
+            </div>
+            <div class="flex-1 w-full h-full overflow-hidden bg-white/5 relative flex justify-center bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L2NpcmNsZT48L2N2Zz4=')]">
+                <iframe id="preview-frame" class="preview-desktop bg-white" sandbox="allow-scripts allow-modals"></iframe>
+            </div>
+        </section>
 
-                <!-- Row 1: Code Editor -->
-                <div id="editor-panel" class="panel flex flex-col flex-grow lg:h-1/2">
-                    <div class="p-3 bg-[#1e2329] rounded-t-xl flex justify-between items-center border-b border-[#30363d]">
-                        <span class="text-sm font-semibold uppercase tracking-wider text-green-400">
-                            HTML/CSS/JS Editor
-                        </span>
-                        <button id="run-button" class="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full transition shadow-lg">
-                            <span class="mr-1">▶</span> Run
-                        </button>
-                    </div>
-                    <textarea id="html-editor" class="w-full p-4 text-sm bg-[#0d1117] text-white custom-scroll resize-none flex-grow rounded-b-lg focus:outline-none"
-                        placeholder="Write your HTML, CSS (in <style> tags), and JavaScript (in <script> tags) here...">
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #1f2937; /* Dark background */
-            font-family: 'Inter', sans-serif;
-            color: white;
-        }
-        .responsive-box {
-            background-color: #34D399; /* Green */
-            padding: 20px;
-            border-radius: 8px;
-            color: #1f2937;
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-    </style>
-</head>
-<body>
-    <div class="responsive-box">
-        <h2 style="font-size: 1.5rem;">Mourish AI: Code Running!</h2>
-        <p id="status-message">JS execution status will show here.</p>
-    </div>
-    <script>
-        // This script confirms JS execution.
-        document.addEventListener('DOMContentLoaded', () => {
-            const status = document.getElementById('status-message');
-            if (status) {
-                status.textContent = 'JavaScript executed successfully at ' + new Date().toLocaleTimeString();
-            }
-        });
-    </script>
-</body>
-</html>
-                    </textarea>
+        <!-- AI Chat Sidebar (Fixed Width, Toggleable) -->
+        <aside id="chat-sidebar" class="w-96 flex flex-col border-l border-slate-700 bg-slate-900 shrink-0 absolute lg:static right-0 h-full z-20 transform transition-transform duration-300 shadow-2xl lg:shadow-none">
+            
+            <!-- Chat Header -->
+            <div class="h-12 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900">
+                <div class="flex items-center gap-2 text-purple-400">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span class="font-semibold text-sm">AI Assistant</span>
                 </div>
-
-                <!-- Row 2: Live Preview -->
-                <div id="preview-panel" class="panel flex flex-col flex-grow lg:h-1/2">
-                    <div class="p-3 bg-[#1e2329] rounded-t-xl border-b border-[#30363d] flex justify-between items-center">
-                        <span class="text-sm font-semibold uppercase tracking-wider text-blue-400">
-                            Live Preview
-                        </span>
-                        <div id="device-controls" class="flex space-x-2">
-                            <button data-mode="desktop" class="device-btn px-3 py-1 bg-gray-600/20 text-gray-300 rounded-lg text-xs font-semibold ring-2 ring-transparent transition hover:ring-blue-500">
-                                Desktop
-                            </button>
-                            <button data-mode="mobile" class="device-btn px-3 py-1 bg-gray-600/20 text-gray-300 rounded-lg text-xs font-semibold ring-2 ring-transparent transition hover:ring-blue-500">
-                                Mobile
-                            </button>
-                        </div>
-                    </div>
-                    <!-- Frame wrapper for mobile view effect -->
-                    <div class="flex-grow p-4 bg-[#0d1117] flex justify-center items-center">
-                        <iframe id="live-preview" sandbox="allow-scripts allow-forms allow-same-origin" 
-                            class="bg-white rounded-b-lg flex-grow border-4 border-gray-700">
-                        </iframe>
-                    </div>
-                </div>
-
+                <button id="btn-close-chat" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
             </div>
 
-            <!-- AI CHAT CONTAINER -->
-            <div id="ai-panel" class="w-full lg:w-3/10 panel flex flex-col mobile-split-height">
-                <div class="p-3 bg-[#1e2329] rounded-t-xl border-b border-[#30363d] text-sm font-bold uppercase tracking-widest text-teal-400">
-                    Mourish AI Assistant
+            <!-- Messages Area -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+                <!-- Welcome Message -->
+                <div class="flex gap-3 text-sm text-slate-300">
+                    <div class="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center shrink-0 border border-purple-700/50">
+                        <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <p>Hello! I'm your coding assistant. Use the buttons above to switch between Split, Code Max, and Preview Max views, and click the **Run** button for manual updates!</p>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Chat History -->
-                <div id="ai-chat-history" class="p-4 flex flex-col gap-3 custom-scroll overflow-y-auto flex-grow h-full">
-                    <!-- Initial AI Message is added via JavaScript after initialization -->
-                </div>
-
-                <!-- Loading Indicator -->
-                <div id="ai-loading-indicator" class="hidden p-3 bg-teal-800/40 text-teal-200 text-center font-semibold">
-                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-teal-200 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    ... Mourish AI is typing ...
-                </div>
-
-                <!-- Chat Input -->
-                <div class="p-3 bg-[#1e2329] border-t border-[#30363d] rounded-b-xl flex gap-2">
-                    <input type="text" id="ai-chat-input" placeholder="Ask Mourish AI about your code..."
-                        class="flex-grow p-2 rounded-lg bg-[#0d1117] border border-[#30363d] text-sm text-white placeholder-gray-500 focus:ring-teal-500 focus:border-teal-500">
-                    <button id="ai-send-button" class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold rounded-lg transition text-sm">
-                        Send
+            <!-- Input Area -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900">
+                <div class="relative">
+                    <textarea 
+                        id="chat-input"
+                        rows="1" 
+                        class="w-full bg-slate-800 text-slate-200 text-sm rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 resize-none overflow-hidden"
+                        placeholder="Ask AI to generate code..."
+                    ></textarea>
+                    <button 
+                        id="btn-send"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled
+                    >
+                        <i data-lucide="send-horizontal" class="w-4 h-4"></i>
                     </button>
                 </div>
+                <div class="text-[10px] text-slate-500 mt-2 text-center">
+                    Gemini 2.5 Flash • AI can make mistakes.
+                </div>
             </div>
-        </div>
-    </div>
+        </aside>
 
-    <!-- JavaScript Logic -->
+    </main>
+
     <script>
-        const editor = document.getElementById('html-editor');
-        const runButton = document.getElementById('run-button');
-        const previewFrame = document.getElementById('live-preview');
-        const viewControls = document.getElementById('view-controls');
-        const deviceControls = document.getElementById('device-controls');
-        
-        const codePreviewContainer = document.getElementById('code-preview-container');
-        const editorPanel = document.getElementById('editor-panel');
-        const previewPanel = document.getElementById('preview-panel');
-        const aiPanel = document.getElementById('ai-panel');
-
-        const aiChatHistory = document.getElementById('ai-chat-history');
-        const aiChatInput = document.getElementById('ai-chat-input');
-        const aiSendButton = document.getElementById('ai-send-button');
-        const aiLoadingIndicator = document.getElementById('ai-loading-indicator');
-
-        const apiKey = "";
-        const modelName = "gemini-2.5-flash-preview-09-2025";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-        let chatHistory = [];
-        const systemInstruction = "You are a friendly, conversational, and expert web development tutor and assistant named Mourish AI. You are reviewing the user's current code in the editor. You must provide explanations or new/fixed code when requested. When providing code, always surround it with triple backticks and specify 'html' for the language. Always keep the conversation going.";
-
-        /**
-         * Core function to update the live preview iframe.
-         */
-        function runCode() {
-            let code = editor.value;
-            const iframeDoc = previewFrame.contentWindow.document;
-
-            // 1. Ensure the code is wrapped in a full HTML document structure if missing
-            if (!code.trim().toLowerCase().startsWith('<!doctype html>')) {
-                // Prepend basic structure and essential CSS for full-height rendering
-                code = `<!DOCTYPE html>
+        // --- Configuration ---
+        const DEFAULT_CODE = `<!DOCTYPE html>
 <html>
 <head>
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            box-sizing: border-box;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background: linear-gradient(135deg, #1e3a8a 0%, #0c4a6e 100%);
+            color: white;
+            text-align: center;
         }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 90%;
+            width: 400px;
+        }
+        h1 { margin: 0 0 1rem 0; font-size: 2rem; }
+        p { margin-bottom: 1.5rem; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        button:hover { background-color: #2563eb; }
+        button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
-    ${code}
+    <div class="card">
+        <h1>Super Code Forge</h1>
+        <p>Auto-run is active, or click the **Run** button!</p>
+        <!-- Fix: Replaced alert() with console log for iframe compatibility -->
+        <button onclick="console.log('Manual run test successful (alert avoided).'); this.textContent = 'Tested!'; setTimeout(() => this.textContent = 'Run Test', 1000);">Run Test</button>
+    </div>
 </body>
 </html>`;
+
+        // --- DOM Elements ---
+        const editor = document.getElementById('code-editor');
+        const previewFrame = document.getElementById('preview-frame');
+        const editorSection = document.getElementById('editor-section');
+        const previewSection = document.getElementById('preview-section');
+        const previewLabel = document.getElementById('preview-size-label');
+        const deviceControls = document.getElementById('device-controls');
+        
+        const btnRun = document.getElementById('btn-run'); // Manual Run Button
+        const btnModeSplit = document.getElementById('btn-mode-split');
+        const btnModeEditor = document.getElementById('btn-mode-editor');
+        const btnModePreview = document.getElementById('btn-mode-preview');
+        const layoutButtons = [btnModeSplit, btnModeEditor, btnModePreview];
+
+        const btnDesktop = document.getElementById('btn-desktop');
+        const btnMobile = document.getElementById('btn-mobile');
+        
+        // Chat Elements
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const btnToggleChat = document.getElementById('btn-toggle-chat');
+        const btnCloseChat = document.getElementById('btn-close-chat');
+
+        // --- State ---
+        let currentLayoutMode = 'split'; // 'split', 'editor-max', 'preview-max'
+        let currentDeviceMode = 'desktop'; // 'desktop', 'mobile'
+
+        // --- Utility Functions ---
+        // Debounce utility to prevent excessive updates while typing
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+        
+        // Extracts the content of the first code block (html, js, css) from markdown text
+        function extractFullCodeBlock(markdownText) {
+            // Regex to find the first code block (capture group 2 contains the code content)
+            const codeMatch = markdownText.match(/```(html|javascript|js|css)\n([\s\S]*?)```/i);
+            if (codeMatch && codeMatch[2]) {
+                return codeMatch[2].trim();
+            }
+            return null;
+        }
+
+        // --- Core Editor Functions ---
+        function updatePreview() {
+            const code = editor.value;
+            previewFrame.srcdoc = code;
+        }
+
+        // Debounced auto-run function
+        const debouncedUpdatePreview = debounce(updatePreview, 300); // 300ms delay
+
+        // --- Layout Management ---
+        function updateLayout() {
+            // Reset classes
+            editorSection.className = 'layout-panel flex flex-col min-w-0 bg-slate-900 relative group';
+            previewSection.className = 'layout-panel flex flex-col bg-slate-950 min-w-0 relative';
+            editorSection.style.borderRight = '1px solid #334155';
+            
+            // Apply new classes based on mode
+            if (currentLayoutMode === 'split') {
+                editorSection.classList.add('w-1/2');
+                previewSection.classList.add('w-1/2');
+                previewSection.style.display = 'flex';
+                editorSection.style.display = 'flex';
+                deviceControls.style.display = 'flex';
+            } else if (currentLayoutMode === 'editor-max') {
+                editorSection.classList.add('w-full');
+                previewSection.classList.add('w-0', 'hidden');
+                editorSection.style.borderRight = 'none';
+                editorSection.style.display = 'flex';
+                deviceControls.style.display = 'none';
+            } else if (currentLayoutMode === 'preview-max') {
+                editorSection.classList.add('w-0', 'hidden');
+                previewSection.classList.add('w-full');
+                previewSection.style.display = 'flex';
+                deviceControls.style.display = 'flex';
             }
 
-            // 2. Inject and execute
-            iframeDoc.open();
-            iframeDoc.write(code);
-            iframeDoc.close();
-
-            // 3. Update chat status
-            const statusMessage = 'Code Executed: Live Preview updated successfully.';
-            const message = createChatMessage('AI', statusMessage, 'ai-message');
-            aiChatHistory.appendChild(message);
-            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+            // Update button styling
+            layoutButtons.forEach(btn => btn.classList.remove('tab-active', 'text-slate-400'));
+            
+            if (currentLayoutMode === 'split') {
+                btnModeSplit.classList.add('tab-active');
+                btnModeEditor.classList.add('text-slate-400');
+                btnModePreview.classList.add('text-slate-400');
+            } else if (currentLayoutMode === 'editor-max') {
+                btnModeEditor.classList.add('tab-active');
+                btnModeSplit.classList.add('text-slate-400');
+                btnModePreview.classList.add('text-slate-400');
+            } else if (currentLayoutMode === 'preview-max') {
+                btnModePreview.classList.add('tab-active');
+                btnModeSplit.classList.add('text-slate-400');
+                btnModeEditor.classList.add('text-slate-400');
+            }
         }
 
-        /**
-         * Creates and appends a message bubble to the chat history.
-         */
-        function createChatMessage(role, content, className) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = className;
-            // Use innerHTML to allow markdown/code blocks to render nicely
-            messageDiv.innerHTML = formatContent(content); 
-            return messageDiv;
+        function switchDeviceMode(mode) {
+            currentDeviceMode = mode;
+            if (mode === 'desktop') {
+                previewFrame.className = 'preview-desktop bg-white';
+                previewLabel.innerText = 'Desktop (100%)';
+                btnDesktop.classList.add('bg-slate-700', 'text-white');
+                btnMobile.classList.remove('bg-slate-700', 'text-white');
+                btnMobile.classList.add('text-slate-400');
+            } else {
+                previewFrame.className = 'preview-mobile bg-white shadow-xl';
+                previewLabel.innerText = 'Mobile (375px)';
+                btnMobile.classList.add('bg-slate-700', 'text-white');
+                btnDesktop.classList.remove('bg-slate-700', 'text-white');
+                btnDesktop.classList.add('text-slate-400');
+            }
         }
-
-        /**
-         * Formats content to handle simple markdown/code blocks for UI display.
-         */
-        function formatContent(text) {
-             // Basic replacement for code blocks (using a simple font/style)
-            text = text.replace(/```html\n([\s\S]*?)```/g, (match, code) => 
-                `<pre class="bg-gray-800 p-2 my-2 rounded-md overflow-x-auto text-yellow-300 text-xs">${code.trim()}</pre>`
-            );
-            text = text.replace(/```([\s\S]*?)```/g, (match, code) => 
-                `<pre class="bg-gray-800 p-2 my-2 rounded-md overflow-x-auto text-yellow-300 text-xs">${code.trim()}</pre>`
-            );
-            
-            // Basic replacement for bold
-            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            
-            // Basic replacement for lists (simple approach)
-            text = text.replace(/^- (.*)/gm, '<li>$1</li>');
-            if (text.includes('<li>')) {
-                text = `<ul>${text}</ul>`;
+        
+        // Chat UI Toggles
+        function toggleChat(show) {
+            if (show === undefined) {
+                // Toggle if state is not explicitly set
+                show = chatSidebar.classList.contains('translate-x-full');
             }
 
-            return text;
+            if (show) {
+                chatSidebar.classList.remove('translate-x-full');
+            } else {
+                chatSidebar.classList.add('translate-x-full');
+            }
         }
 
+        // --- Initialization ---
+        lucide.createIcons();
+        editor.value = DEFAULT_CODE;
+        updateLayout(); 
+        switchDeviceMode('desktop'); // Initialize device mode
+        updatePreview(); // Initial run
 
-        /**
-         * Calls the Mourish AI API, maintaining chat history and handling diagnostics.
-         */
-        async function callGeminiApi(userMessage, maxRetries = 3) {
-            // Add user message to history
-            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+        // --- Event Listeners ---
+        
+        // Manual Run: Trigger immediate update
+        btnRun.addEventListener('click', updatePreview);
 
-            // The code editor content is the context for all AI requests
-            const codeContext = editor.value.trim();
+        // Layout Toggles
+        btnModeSplit.addEventListener('click', () => { currentLayoutMode = 'split'; updateLayout(); });
+        btnModeEditor.addEventListener('click', () => { currentLayoutMode = 'editor-max'; updateLayout(); });
+        btnModePreview.addEventListener('click', () => { currentLayoutMode = 'preview-max'; updateLayout(); });
+
+        // Device Toggles
+        btnDesktop.addEventListener('click', () => switchDeviceMode('desktop'));
+        btnMobile = document.getElementById('btn-mobile');
+        
+        // Chat Elements
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const btnToggleChat = document.getElementById('btn-toggle-chat');
+        const btnCloseChat = document.getElementById('btn-close-chat');
+
+        // --- State ---
+        let currentLayoutMode = 'split'; // 'split', 'editor-max', 'preview-max'
+        let currentDeviceMode = 'desktop'; // 'desktop', 'mobile'
+
+        // --- Utility Functions ---
+        // Debounce utility to prevent excessive updates while typing
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+        
+        // Extracts the content of the first code block (html, js, css) from markdown text
+        function extractFullCodeBlock(markdownText) {
+            // Regex to find the first code block (capture group 2 contains the code content)
+            const codeMatch = markdownText.match(/```(html|javascript|js|css)\n([\s\S]*?)```/i);
+            if (codeMatch && codeMatch[2]) {
+                return codeMatch[2].trim();
+            }
+            return null;
+        }
+
+        // --- Core Editor Functions ---
+        function updatePreview() {
+            const code = editor.value;
+            previewFrame.srcdoc = code;
+        }
+
+        // Debounced auto-run function
+        const debouncedUpdatePreview = debounce(updatePreview, 300); // 300ms delay
+
+        // --- Layout Management ---
+        function updateLayout() {
+            // Reset classes
+            editorSection.className = 'layout-panel flex flex-col min-w-0 bg-slate-900 relative group';
+            previewSection.className = 'layout-panel flex flex-col bg-slate-950 min-w-0 relative';
+            editorSection.style.borderRight = '1px solid #334155';
             
-            // Prepend the current code context to the user message for AI awareness
-            const contextualMessage = `User request: ${userMessage}\n\n[CONTEXT] Current code in editor:\n${codeContext}`;
+            // Apply new classes based on mode
+            if (currentLayoutMode === 'split') {
+                editorSection.classList.add('w-1/2');
+                previewSection.classList.add('w-1/2');
+                previewSection.style.display = 'flex';
+                editorSection.style.display = 'flex';
+                deviceControls.style.display = 'flex';
+            } else if (currentLayoutMode === 'editor-max') {
+                editorSection.classList.add('w-full');
+                previewSection.classList.add('w-0', 'hidden');
+                editorSection.style.borderRight = 'none';
+                editorSection.style.display = 'flex';
+                deviceControls.style.display = 'none';
+            } else if (currentLayoutMode === 'preview-max') {
+                editorSection.classList.add('w-0', 'hidden');
+                previewSection.classList.add('w-full');
+                previewSection.style.display = 'flex';
+                deviceControls.style.display = 'flex';
+            }
 
+            // Update button styling
+            layoutButtons.forEach(btn => btn.classList.remove('tab-active', 'text-slate-400'));
+            
+            if (currentLayoutMode === 'split') {
+                btnModeSplit.classList.add('tab-active');
+                btnModeEditor.classList.add('text-slate-400');
+                btnModePreview.classList.add('text-slate-400');
+            } else if (currentLayoutMode === 'editor-max') {
+                btnModeEditor.classList.add('tab-active');
+                btnModeSplit.classList.add('text-slate-400');
+                btnModePreview.classList.add('text-slate-400');
+            } else if (currentLayoutMode === 'preview-max') {
+                btnModePreview.classList.add('tab-active');
+                btnModeSplit.classList.add('text-slate-400');
+                btnModeEditor.classList.add('text-slate-400');
+            }
+        }
 
+        function switchDeviceMode(mode) {
+            currentDeviceMode = mode;
+            if (mode === 'desktop') {
+                previewFrame.className = 'preview-desktop bg-white';
+                previewLabel.innerText = 'Desktop (100%)';
+                btnDesktop.classList.add('bg-slate-700', 'text-white');
+                btnMobile.classList.remove('bg-slate-700', 'text-white');
+                btnMobile.classList.add('text-slate-400');
+            } else {
+                previewFrame.className = 'preview-mobile bg-white shadow-xl';
+                previewLabel.innerText = 'Mobile (375px)';
+                btnMobile.classList.add('bg-slate-700', 'text-white');
+                btnDesktop.classList.remove('bg-slate-700', 'text-white');
+                btnDesktop.classList.add('text-slate-400');
+            }
+        }
+        
+        // Chat UI Toggles
+        function toggleChat(show) {
+            if (show === undefined) {
+                // Toggle if state is not explicitly set
+                show = chatSidebar.classList.contains('translate-x-full');
+            }
+
+            if (show) {
+                chatSidebar.classList.remove('translate-x-full');
+            } else {
+                chatSidebar.classList.add('translate-x-full');
+            }
+        }
+
+        // --- Initialization ---
+        lucide.createIcons();
+        editor.value = DEFAULT_CODE;
+        updateLayout(); 
+        switchDeviceMode('desktop'); // Initialize device mode
+        updatePreview(); // Initial run
+
+        // --- Event Listeners ---
+        
+        // Manual Run: Trigger immediate update
+        btnRun.addEventListener('click', updatePreview);
+
+        // Layout Toggles
+        btnModeSplit.addEventListener('click', () => { currentLayoutMode = 'split'; updateLayout(); });
+        btnModeEditor.addEventListener('click', () => { currentLayoutMode = 'editor-max'; updateLayout(); });
+        btnModePreview.addEventListener('click', () => { currentLayoutMode = 'preview-max'; updateLayout(); });
+
+        // Device Toggles
+        btnDesktop.addEventListener('click', () => switchDeviceMode('desktop'));
+        btnMobile.addEventListener('click', () => switchDeviceMode('mobile'));
+
+        // AUTO-RUN: Trigger debounced update on any input
+        editor.addEventListener('input', debouncedUpdatePreview);
+
+        // Simple tab support in textarea
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + "  " + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 2;
+            }
+        });
+        
+        // Chat Toggles
+        btnToggleChat.addEventListener('click', () => toggleChat());
+        btnCloseChat.addEventListener('click', () => toggleChat(false));
+
+        // --- AI Integration ---
+        
+        // Auto-resize chat input and enable send button
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if (this.value.trim().length > 0) {
+                btnSend.removeAttribute('disabled');
+                btnSend.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                btnSend.classList.remove('bg-slate-700');
+            } else {
+                btnSend.setAttribute('disabled', 'true');
+            }
+        });
+
+        // Handle Send on click or Enter
+        btnSend.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+            }
+        });
+
+        async function handleSendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            // Clear input
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            
+            // Disable input and button to prevent concurrent requests
+            chatInput.setAttribute('disabled', 'true');
+            btnSend.setAttribute('disabled', 'true');
+
+            // Add User Message
+            appendMessage('user', text);
+
+            // Add Loading Indicator
+            const loadingId = appendLoading();
+
+            try {
+                // Prepare context
+                const currentCode = editor.value;
+                const systemPrompt = `You are an expert Frontend Developer and coding assistant inside an HTML code editor. 
+                The user has an editor open with the following content:
+                
+                \`\`\`html
+                ${currentCode.substring(0, 10000)}
+                \`\`\`
+                
+                Help the user with their request. If they ask for code, provide the full HTML/CSS/JS snippets.
+                Keep responses concise and helpful. 
+                If generating a full page, wrap it in a single HTML block.
+                Format your response with Markdown.`;
+
+                // Call API
+                const responseText = await callGeminiAPI(text, systemPrompt);
+                
+                // 1. Extract Code Block
+                const newCode = extractFullCodeBlock(responseText);
+
+                // 2. If code found, update the editor and run preview
+                if (newCode) {
+                    editor.value = newCode;
+                    updatePreview();
+                    
+                    // 3. Automatically switch to Preview Max mode
+                    currentLayoutMode = 'preview-max';
+                    updateLayout();
+                }
+
+                // Remove loading and add AI Message
+                removeMessage(loadingId);
+                appendMessage('ai', responseText);
+
+            } catch (error) {
+                console.error(error);
+                removeMessage(loadingId);
+                appendMessage('ai', "I'm sorry, I encountered an error connecting to the AI service. Please try again.");
+            } finally {
+                // Re-enable the chat input field after the request finishes (success or error)
+                chatInput.removeAttribute('disabled');
+                // The send button remains disabled until the user types something new (handled by the input listener).
+            }
+        }
+
+        // --- API Logic ---
+        const apiKey = ""; // Runtime provided
+
+        async function callGeminiAPI(userQuery, systemPrompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
             const payload = {
-                contents: chatHistory,
-                systemInstruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
             };
 
-            // Use the last message to overwrite the history entry with the contextual version
-            payload.contents[payload.contents.length - 1].parts[0].text = contextualMessage;
+            const maxRetries = 3;
+            const delays = [1000, 2000, 4000];
 
-            aiLoadingIndicator.classList.remove('hidden');
-
-            for (let i = 0; i < maxRetries; i++) {
+            for (let i = 0; i <= maxRetries; i++) {
                 try {
-                    const response = await fetch(apiUrl, {
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
 
-                    if (response.ok) {
-                        const result = await response.json();
-                        aiLoadingIndicator.classList.add('hidden');
-                        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "I apologize, Mourish AI couldn't generate a response.";
-                        
-                        // Add AI response to history
-                        chatHistory.push({ role: "model", parts: [{ text: aiText }] });
-                        
-                        // Check if AI provided code
-                        const codeMatch = aiText.match(/```html\n([\s\S]*?)```/);
-                        if (codeMatch) {
-                            editor.value = codeMatch[1].trim();
-                            runCode(); // Auto-run the code provided by AI
-                        }
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
-                        return aiText;
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 
-                    } else if (response.status === 403 || response.status === 401) {
-                        // Specific error handling for the 403/401 Forbidden issue
-                        aiLoadingIndicator.classList.add('hidden');
-                        const errorMsg = `API Error (${response.status} Forbidden): Mourish AI is blocked. This often happens in sandbox environments where the API key is not being provided or is incorrect. The core editor/preview still functions!`;
-                        console.error(errorMsg);
-                        return errorMsg;
-                    } 
-                    else if (response.status === 429 && i < maxRetries - 1) {
-                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    } else {
-                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-                    }
-                } catch (error) {
-                    aiLoadingIndicator.classList.add('hidden');
-                    return `Connection Error: Could not connect to the API service. Details: ${error.message}`;
+                } catch (err) {
+                    if (i === maxRetries) throw err;
+                    await new Promise(res => setTimeout(res, delays[i]));
                 }
             }
-
-            aiLoadingIndicator.classList.add('hidden');
-            return "Error: Maximum retries reached for the API call.";
         }
 
-        /**
-         * Sends the user's message to the AI.
-         */
-        async function handleChatSend() {
-            const userMessage = aiChatInput.value.trim();
-            if (!userMessage) return;
-
-            // 1. Display user message
-            const userMsgElement = createChatMessage('User', userMessage, 'user-message');
-            aiChatHistory.appendChild(userMsgElement);
-            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
-            aiChatInput.value = '';
-
-            // 2. Get AI Response
-            const aiResponseText = await callGeminiApi(userMessage);
-
-            // 3. Display AI response
-            const className = aiResponseText.includes("API Error") || aiResponseText.includes("Connection Error") ? 'error-message' : 'ai-message';
-            const aiMsgElement = createChatMessage('AI', aiResponseText, className);
-            aiChatHistory.appendChild(aiMsgElement);
-            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
-        }
-
-        /**
-         * Logic to switch the primary view mode (Split/Code/Preview/AI).
-         */
-        function switchView(viewMode) {
-// Reset classes for all main containers
-            codePreviewContainer.className = 'flex flex-col w-full lg:w-7/10 gap-4 mobile-split-height';
-            aiPanel.className = 'w-full lg:w-3/10 panel flex flex-col mobile-split-height';
-            editorPanel.classList.remove('hidden');
-            previewPanel.classList.remove('hidden');
-            aiPanel.classList.remove('hidden');
-
-            // Reset desktop split view height (flex-grow + lg:h-1/2)
-            editorPanel.classList.add('lg:h-1/2');
-            previewPanel.classList.add('lg:h-1/2');
-
-
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.classList.remove('bg-teal-600/20', 'ring-2', 'ring-teal-600');
-                btn.classList.add('bg-gray-600/20');
-                if (btn.dataset.view === viewMode) {
-                    btn.classList.add('bg-teal-600/20', 'ring-2', 'ring-teal-600');
-                    btn.classList.remove('bg-gray-600/20');
-                }
-            });
-
-            // Apply full-screen logic
-            switch (viewMode) {
-                case 'editor':
-                    codePreviewContainer.className = 'flex flex-col w-full lg:w-full gap-4 flex-grow';
-                    aiPanel.classList.add('hidden');
-                    previewPanel.classList.add('hidden');
-                    // On full view, remove fixed desktop height to allow flex-grow to work fully
-                    editorPanel.classList.remove('lg:h-1/2'); 
-                    break;
-                case 'preview':
-                    codePreviewContainer.className = 'flex flex-col w-full lg:w-full gap-4 flex-grow';
-                    aiPanel.classList.add('hidden');
-                    editorPanel.classList.add('hidden');
-                    previewPanel.classList.remove('lg:h-1/2');
-                    break;
-                case 'ai':
-                    codePreviewContainer.classList.add('hidden');
-                    aiPanel.className = 'w-full lg:w-full panel flex flex-col flex-grow';
-                    break;
-                case 'split':
-                default:
-                    // Default classes already applied above
-                    break;
-            }
-        }
-
-        /**
-         * Logic to simulate device views in the preview iframe.
-         */
-        function setDeviceMode(mode) {
-            const iframeWrapper = previewFrame.parentElement;
+        // --- UI Helpers ---
+        function appendMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = `flex gap-3 text-sm ${role === 'user' ? 'flex-row-reverse' : ''}`;
             
-            // Reset state
-            previewFrame.className = 'bg-white rounded-b-lg flex-grow border-4 border-gray-700';
+            const avatar = document.createElement('div');
+            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                role === 'ai' 
+                ? 'bg-purple-900/50 border-purple-700/50' 
+                : 'bg-blue-900/50 border-blue-700/50'
+            }`;
+            avatar.innerHTML = role === 'ai' 
+                ? `<i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>` 
+                : `<i data-lucide="user" class="w-4 h-4 text-blue-400"></i>`;
 
-            document.querySelectorAll('.device-btn').forEach(btn => {
-                btn.classList.remove('ring-blue-500');
-                if (btn.dataset.mode === mode) {
-                    btn.classList.add('ring-blue-500');
-                }
-            });
+            const content = document.createElement('div');
+            content.className = `flex-1 space-y-2 max-w-[85%] ${role === 'user' ? 'text-right' : ''}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `inline-block p-3 rounded-2xl text-left markdown-content ${
+                role === 'user' 
+                ? 'bg-blue-600 text-white rounded-tr-sm' 
+                : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm'
+            }`;
 
-            if (mode === 'mobile') {
-                iframeWrapper.classList.add('p-4'); // Add padding for visual phone frame effect
-                previewFrame.classList.add('mobile-view');
-                // Ensure frame itself does not stretch full-height in mobile mode
-                previewFrame.style.flexGrow = '0';
+            if (role === 'ai') {
+                // Parse markdown content
+                bubble.innerHTML = marked.parse(text);
+                // Attach a click listener to all code blocks to copy content
+                bubble.querySelectorAll('pre code').forEach(codeBlock => {
+                    codeBlock.classList.add('cursor-pointer', 'relative');
+                    codeBlock.title = "Click to copy code";
+                    codeBlock.addEventListener('click', (event) => {
+                        // Prevent click on internal elements like scrollbars
+                        if (event.target !== codeBlock) return;
+                        
+                        const code = codeBlock.innerText.trim();
+                        // Use document.execCommand('copy') for better iframe compatibility
+                        const tempTextarea = document.createElement('textarea');
+                        tempTextarea.value = code;
+                        document.body.appendChild(tempTextarea);
+                        tempTextarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tempTextarea);
+
+                        // Visual feedback
+                        const originalText = codeBlock.innerHTML;
+                        const copyMessage = document.createElement('span');
+                        copyMessage.className = 'absolute top-1 right-1 text-xs px-2 py-0.5 rounded bg-green-500 text-white transition-opacity duration-300';
+                        copyMessage.innerText = 'Copied!';
+                        codeBlock.appendChild(copyMessage);
+                        setTimeout(() => copyMessage.remove(), 1000);
+                    });
+                });
+
             } else {
-                iframeWrapper.classList.remove('p-4');
-                previewFrame.style.flexGrow = '1';
+                bubble.textContent = text;
             }
+
+            content.appendChild(bubble);
+            div.appendChild(avatar);
+            div.appendChild(content);
+
+            chatMessages.appendChild(div);
+            lucide.createIcons();
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            return div;
         }
 
-        /**
-         * Initialization function to run on window load.
-         */
-        function initApp() {
-            // 1. Run the user's code in the preview
-            runCode();
-
-            // 2. Set default device and view modes
-            setDeviceMode('desktop'); 
-            switchView('split');
-
-            // 3. Add initial greeting message to chat
-            const initialGreeting = "Hello! I'm your coding assistant, Mourish AI. You can write your HTML/CSS/JS in the editor and click 'Run' to see it live. Ask me to generate code, explain what you've written, or debug an issue.";
-            const greetingMsg = createChatMessage('AI', initialGreeting, 'ai-message');
-            aiChatHistory.appendChild(greetingMsg);
-            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
-
-            // 4. Check API status (optional: can be removed if status check is too slow)
-            // Note: Since we know the API key is missing, we'll proactively inform the user.
-            const apiWarning = "⚠️ **Mourish AI Status Warning:** I might return a **403 Forbidden** error when you send a message, as the API key is not currently configured for this sandbox environment. The code editor and preview will still work!";
-            const warningMsg = createChatMessage('AI', apiWarning, 'error-message');
-            aiChatHistory.appendChild(warningMsg);
+        function appendLoading() {
+            const id = 'loading-' + Date.now();
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = `flex gap-3 text-sm`;
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-purple-900/50 flex items-center justify-center shrink-0 border border-purple-700/50">
+                    <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-slate-800 border border-slate-700 px-4 py-3 rounded-2xl rounded-tl-sm typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            lucide.createIcons();
+            return id;
         }
 
+        function removeMessage(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
 
-        // Event Listeners
-        runButton.addEventListener('click', runCode);
-        aiSendButton.addEventListener('click', handleChatSend);
-        aiChatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleChatSend();
-            }
-        });
-
-        // View Mode Toggles
-        viewControls.querySelectorAll('.view-btn').forEach(button => {
-            button.addEventListener('click', () => switchView(button.dataset.view));
-        });
-        
-        // Device Mode Toggles
-        deviceControls.querySelectorAll('.device-btn').forEach(button => {
-            button.addEventListener('click', () => setDeviceMode(button.dataset.mode));
-        });
-
-        // Initial setup on load
-        window.onload = initApp;
     </script>
 </body>
 </html>
