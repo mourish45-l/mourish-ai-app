@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mourish AI </title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font family -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Deep Charcoal Background */
+            overflow-x: hidden; /* Prevent body scroll */
+        }
+        /* Full screen height */
+        #app-container {
+            height: 100vh;
+            max-height: 100vh;
+        }
+
+        /* Editor and Panel styling */
+        .panel {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 1rem;
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Mobile Split View Heights */
+        @media (max-width: 1023px) { /* Adjust heights for non-desktop (mobile/tablet) */
+            .mobile-split-height {
+                min-height: 40vh; /* Ensure visibility before scroll */
+            }
+        }
+
+        /* Custom scrollbar for a darker aesthetic */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #30363d;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background-color: #0d1117;
+        }
+
+        /* Preview iframe specific sizing */
+        #live-preview {
+            width: 100%;
+            height: 100%;
+            transition: width 0.3s ease-in-out;
+        }
+        .mobile-view {
+            width: 375px !important; /* iPhone X width */
+            margin: 0 auto;
+            border-radius: 20px;
+            box-shadow: 0 0 0 10px #333;
+        }
+
+        /* AI Chat styling */
+        .user-message {
+            background-color: #3B82F6;
+            align-self: flex-end;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px 15px 0 15px;
+            max-width: 85%;
+        }
+        .ai-message {
+            background-color: #059669;
+            align-self: flex-start;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px 15px 15px 0;
+            max-width: 85%;
+        }
+        .error-message {
+            background-color: #DC2626; /* Red for error */
+            align-self: flex-start;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px 15px 15px 0;
+            max-width: 95%;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="text-gray-100 p-2 md:p-4">
+
+    <!-- Main App Container (Full Height) -->
+    <div id="app-container" class="flex flex-col gap-3">
+
+        <!-- Header and View Controls -->
+        <header class="flex flex-col md:flex-row justify-between items-center pb-2 px-2 border-b border-[#30363d]">
+            <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500 mb-2 md:mb-0">
+                <span class="text-xs align-top font-light tracking-widest text-gray-400">MOURISH</span> AI 
+            </h1>
+            <div id="view-controls" class="flex flex-wrap justify-center space-x-2 text-sm">
+                <button data-view="split" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-teal-600/20 text-teal-300 ring-2 ring-teal-600">Split</button>
+                <button data-view="editor" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-gray-600/20 text-gray-300 hover:bg-teal-600/20 hover:text-teal-300">Code</button>
+                <button data-view="preview" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-gray-600/20 text-gray-300 hover:bg-teal-600/20 hover:text-teal-300">Preview</button>
+                <button data-view="ai" class="view-btn px-3 py-1.5 mt-1 rounded-full font-semibold bg-gray-600/20 text-gray-300 hover:bg-teal-600/20 hover:text-teal-300">AI Chat</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area (Dynamic Layout) -->
+        <div class="flex-grow flex flex-col lg:flex-row gap-4 overflow-y-auto">
+
+            <!-- CODE & PREVIEW CONTAINER -->
+            <div id="code-preview-container" class="flex flex-col w-full lg:w-7/10 gap-4 mobile-split-height">
+
+                <!-- Row 1: Code Editor -->
+                <div id="editor-panel" class="panel flex flex-col flex-grow lg:h-1/2">
+                    <div class="p-3 bg-[#1e2329] rounded-t-xl flex justify-between items-center border-b border-[#30363d]">
+                        <span class="text-sm font-semibold uppercase tracking-wider text-green-400">
+                            HTML/CSS/JS Editor
+                        </span>
+                        <button id="run-button" class="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full transition shadow-lg">
+                            <span class="mr-1">▶</span> Run
+                        </button>
+                    </div>
+                    <textarea id="html-editor" class="w-full p-4 text-sm bg-[#0d1117] text-white custom-scroll resize-none flex-grow rounded-b-lg focus:outline-none"
+                        placeholder="Write your HTML, CSS (in <style> tags), and JavaScript (in <script> tags) here...">
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #1f2937; /* Dark background */
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+        .responsive-box {
+            background-color: #34D399; /* Green */
+            padding: 20px;
+            border-radius: 8px;
+            color: #1f2937;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="responsive-box">
+        <h2 style="font-size: 1.5rem;">Mourish AI: Code Running!</h2>
+        <p id="status-message">JS execution status will show here.</p>
+    </div>
+    <script>
+        // This script confirms JS execution.
+        document.addEventListener('DOMContentLoaded', () => {
+            const status = document.getElementById('status-message');
+            if (status) {
+                status.textContent = 'JavaScript executed successfully at ' + new Date().toLocaleTimeString();
+            }
+        });
+    </script>
+</body>
+</html>
+                    </textarea>
+                </div>
+
+                <!-- Row 2: Live Preview -->
+                <div id="preview-panel" class="panel flex flex-col flex-grow lg:h-1/2">
+                    <div class="p-3 bg-[#1e2329] rounded-t-xl border-b border-[#30363d] flex justify-between items-center">
+                        <span class="text-sm font-semibold uppercase tracking-wider text-blue-400">
+                            Live Preview
+                        </span>
+                        <div id="device-controls" class="flex space-x-2">
+                            <button data-mode="desktop" class="device-btn px-3 py-1 bg-gray-600/20 text-gray-300 rounded-lg text-xs font-semibold ring-2 ring-transparent transition hover:ring-blue-500">
+                                Desktop
+                            </button>
+                            <button data-mode="mobile" class="device-btn px-3 py-1 bg-gray-600/20 text-gray-300 rounded-lg text-xs font-semibold ring-2 ring-transparent transition hover:ring-blue-500">
+                                Mobile
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Frame wrapper for mobile view effect -->
+                    <div class="flex-grow p-4 bg-[#0d1117] flex justify-center items-center">
+                        <iframe id="live-preview" sandbox="allow-scripts allow-forms allow-same-origin" 
+                            class="bg-white rounded-b-lg flex-grow border-4 border-gray-700">
+                        </iframe>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- AI CHAT CONTAINER -->
+            <div id="ai-panel" class="w-full lg:w-3/10 panel flex flex-col mobile-split-height">
+                <div class="p-3 bg-[#1e2329] rounded-t-xl border-b border-[#30363d] text-sm font-bold uppercase tracking-widest text-teal-400">
+                    Mourish AI Assistant
+                </div>
+
+                <!-- Chat History -->
+                <div id="ai-chat-history" class="p-4 flex flex-col gap-3 custom-scroll overflow-y-auto flex-grow h-full">
+                    <!-- Initial AI Message is added via JavaScript after initialization -->
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="ai-loading-indicator" class="hidden p-3 bg-teal-800/40 text-teal-200 text-center font-semibold">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-teal-200 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ... Mourish AI is typing ...
+                </div>
+
+                <!-- Chat Input -->
+                <div class="p-3 bg-[#1e2329] border-t border-[#30363d] rounded-b-xl flex gap-2">
+                    <input type="text" id="ai-chat-input" placeholder="Ask Mourish AI about your code..."
+                        class="flex-grow p-2 rounded-lg bg-[#0d1117] border border-[#30363d] text-sm text-white placeholder-gray-500 focus:ring-teal-500 focus:border-teal-500">
+                    <button id="ai-send-button" class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold rounded-lg transition text-sm">
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const editor = document.getElementById('html-editor');
+        const runButton = document.getElementById('run-button');
+        const previewFrame = document.getElementById('live-preview');
+        const viewControls = document.getElementById('view-controls');
+        const deviceControls = document.getElementById('device-controls');
+        
+        const codePreviewContainer = document.getElementById('code-preview-container');
+        const editorPanel = document.getElementById('editor-panel');
+        const previewPanel = document.getElementById('preview-panel');
+        const aiPanel = document.getElementById('ai-panel');
+
+        const aiChatHistory = document.getElementById('ai-chat-history');
+        const aiChatInput = document.getElementById('ai-chat-input');
+        const aiSendButton = document.getElementById('ai-send-button');
+        const aiLoadingIndicator = document.getElementById('ai-loading-indicator');
+
+        const apiKey = "";
+        const modelName = "gemini-2.5-flash-preview-09-2025";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+        let chatHistory = [];
+        const systemInstruction = "You are a friendly, conversational, and expert web development tutor and assistant named Mourish AI. You are reviewing the user's current code in the editor. You must provide explanations or new/fixed code when requested. When providing code, always surround it with triple backticks and specify 'html' for the language. Always keep the conversation going.";
+
+        /**
+         * Core function to update the live preview iframe.
+         */
+        function runCode() {
+            let code = editor.value;
+            const iframeDoc = previewFrame.contentWindow.document;
+
+            // 1. Ensure the code is wrapped in a full HTML document structure if missing
+            if (!code.trim().toLowerCase().startsWith('<!doctype html>')) {
+                // Prepend basic structure and essential CSS for full-height rendering
+                code = `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    ${code}
+</body>
+</html>`;
+            }
+
+            // 2. Inject and execute
+            iframeDoc.open();
+            iframeDoc.write(code);
+            iframeDoc.close();
+
+            // 3. Update chat status
+            const statusMessage = 'Code Executed: Live Preview updated successfully.';
+            const message = createChatMessage('AI', statusMessage, 'ai-message');
+            aiChatHistory.appendChild(message);
+            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+        }
+
+        /**
+         * Creates and appends a message bubble to the chat history.
+         */
+        function createChatMessage(role, content, className) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = className;
+            // Use innerHTML to allow markdown/code blocks to render nicely
+            messageDiv.innerHTML = formatContent(content); 
+            return messageDiv;
+        }
+
+        /**
+         * Formats content to handle simple markdown/code blocks for UI display.
+         */
+        function formatContent(text) {
+             // Basic replacement for code blocks (using a simple font/style)
+            text = text.replace(/```html\n([\s\S]*?)```/g, (match, code) => 
+                `<pre class="bg-gray-800 p-2 my-2 rounded-md overflow-x-auto text-yellow-300 text-xs">${code.trim()}</pre>`
+            );
+            text = text.replace(/```([\s\S]*?)```/g, (match, code) => 
+                `<pre class="bg-gray-800 p-2 my-2 rounded-md overflow-x-auto text-yellow-300 text-xs">${code.trim()}</pre>`
+            );
+            
+            // Basic replacement for bold
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Basic replacement for lists (simple approach)
+            text = text.replace(/^- (.*)/gm, '<li>$1</li>');
+            if (text.includes('<li>')) {
+                text = `<ul>${text}</ul>`;
+            }
+
+            return text;
+        }
+
+
+        /**
+         * Calls the Mourish AI API, maintaining chat history and handling diagnostics.
+         */
+        async function callGeminiApi(userMessage, maxRetries = 3) {
+            // Add user message to history
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+
+            // The code editor content is the context for all AI requests
+            const codeContext = editor.value.trim();
+            
+            // Prepend the current code context to the user message for AI awareness
+            const contextualMessage = `User request: ${userMessage}\n\n[CONTEXT] Current code in editor:\n${codeContext}`;
+
+
+            const payload = {
+                contents: chatHistory,
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+            };
+
+            // Use the last message to overwrite the history entry with the contextual version
+            payload.contents[payload.contents.length - 1].parts[0].text = contextualMessage;
+
+            aiLoadingIndicator.classList.remove('hidden');
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        aiLoadingIndicator.classList.add('hidden');
+                        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "I apologize, Mourish AI couldn't generate a response.";
+                        
+                        // Add AI response to history
+                        chatHistory.push({ role: "model", parts: [{ text: aiText }] });
+                        
+                        // Check if AI provided code
+                        const codeMatch = aiText.match(/```html\n([\s\S]*?)```/);
+                        if (codeMatch) {
+                            editor.value = codeMatch[1].trim();
+                            runCode(); // Auto-run the code provided by AI
+                        }
+
+                        return aiText;
+
+                    } else if (response.status === 403 || response.status === 401) {
+                        // Specific error handling for the 403/401 Forbidden issue
+                        aiLoadingIndicator.classList.add('hidden');
+                        const errorMsg = `API Error (${response.status} Forbidden): Mourish AI is blocked. This often happens in sandbox environments where the API key is not being provided or is incorrect. The core editor/preview still functions!`;
+                        console.error(errorMsg);
+                        return errorMsg;
+                    } 
+                    else if (response.status === 429 && i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    } else {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    aiLoadingIndicator.classList.add('hidden');
+                    return `Connection Error: Could not connect to the API service. Details: ${error.message}`;
+                }
+            }
+
+            aiLoadingIndicator.classList.add('hidden');
+            return "Error: Maximum retries reached for the API call.";
+        }
+
+        /**
+         * Sends the user's message to the AI.
+         */
+        async function handleChatSend() {
+            const userMessage = aiChatInput.value.trim();
+            if (!userMessage) return;
+
+            // 1. Display user message
+            const userMsgElement = createChatMessage('User', userMessage, 'user-message');
+            aiChatHistory.appendChild(userMsgElement);
+            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+            aiChatInput.value = '';
+
+            // 2. Get AI Response
+            const aiResponseText = await callGeminiApi(userMessage);
+
+            // 3. Display AI response
+            const className = aiResponseText.includes("API Error") || aiResponseText.includes("Connection Error") ? 'error-message' : 'ai-message';
+            const aiMsgElement = createChatMessage('AI', aiResponseText, className);
+            aiChatHistory.appendChild(aiMsgElement);
+            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+        }
+
+        /**
+         * Logic to switch the primary view mode (Split/Code/Preview/AI).
+         */
+        function switchView(viewMode) {
+// Reset classes for all main containers
+            codePreviewContainer.className = 'flex flex-col w-full lg:w-7/10 gap-4 mobile-split-height';
+            aiPanel.className = 'w-full lg:w-3/10 panel flex flex-col mobile-split-height';
+            editorPanel.classList.remove('hidden');
+            previewPanel.classList.remove('hidden');
+            aiPanel.classList.remove('hidden');
+
+            // Reset desktop split view height (flex-grow + lg:h-1/2)
+            editorPanel.classList.add('lg:h-1/2');
+            previewPanel.classList.add('lg:h-1/2');
+
+
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-600/20', 'ring-2', 'ring-teal-600');
+                btn.classList.add('bg-gray-600/20');
+                if (btn.dataset.view === viewMode) {
+                    btn.classList.add('bg-teal-600/20', 'ring-2', 'ring-teal-600');
+                    btn.classList.remove('bg-gray-600/20');
+                }
+            });
+
+            // Apply full-screen logic
+            switch (viewMode) {
+                case 'editor':
+                    codePreviewContainer.className = 'flex flex-col w-full lg:w-full gap-4 flex-grow';
+                    aiPanel.classList.add('hidden');
+                    previewPanel.classList.add('hidden');
+                    // On full view, remove fixed desktop height to allow flex-grow to work fully
+                    editorPanel.classList.remove('lg:h-1/2'); 
+                    break;
+                case 'preview':
+                    codePreviewContainer.className = 'flex flex-col w-full lg:w-full gap-4 flex-grow';
+                    aiPanel.classList.add('hidden');
+                    editorPanel.classList.add('hidden');
+                    previewPanel.classList.remove('lg:h-1/2');
+                    break;
+                case 'ai':
+                    codePreviewContainer.classList.add('hidden');
+                    aiPanel.className = 'w-full lg:w-full panel flex flex-col flex-grow';
+                    break;
+                case 'split':
+                default:
+                    // Default classes already applied above
+                    break;
+            }
+        }
+
+        /**
+         * Logic to simulate device views in the preview iframe.
+         */
+        function setDeviceMode(mode) {
+            const iframeWrapper = previewFrame.parentElement;
+            
+            // Reset state
+            previewFrame.className = 'bg-white rounded-b-lg flex-grow border-4 border-gray-700';
+
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.classList.remove('ring-blue-500');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('ring-blue-500');
+                }
+            });
+
+            if (mode === 'mobile') {
+                iframeWrapper.classList.add('p-4'); // Add padding for visual phone frame effect
+                previewFrame.classList.add('mobile-view');
+                // Ensure frame itself does not stretch full-height in mobile mode
+                previewFrame.style.flexGrow = '0';
+            } else {
+                iframeWrapper.classList.remove('p-4');
+                previewFrame.style.flexGrow = '1';
+            }
+        }
+
+        /**
+         * Initialization function to run on window load.
+         */
+        function initApp() {
+            // 1. Run the user's code in the preview
+            runCode();
+
+            // 2. Set default device and view modes
+            setDeviceMode('desktop'); 
+            switchView('split');
+
+            // 3. Add initial greeting message to chat
+            const initialGreeting = "Hello! I'm your coding assistant, Mourish AI. You can write your HTML/CSS/JS in the editor and click 'Run' to see it live. Ask me to generate code, explain what you've written, or debug an issue.";
+            const greetingMsg = createChatMessage('AI', initialGreeting, 'ai-message');
+            aiChatHistory.appendChild(greetingMsg);
+            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+
+            // 4. Check API status (optional: can be removed if status check is too slow)
+            // Note: Since we know the API key is missing, we'll proactively inform the user.
+            const apiWarning = "⚠️ **Mourish AI Status Warning:** I might return a **403 Forbidden** error when you send a message, as the API key is not currently configured for this sandbox environment. The code editor and preview will still work!";
+            const warningMsg = createChatMessage('AI', apiWarning, 'error-message');
+            aiChatHistory.appendChild(warningMsg);
+        }
+
+
+        // Event Listeners
+        runButton.addEventListener('click', runCode);
+        aiSendButton.addEventListener('click', handleChatSend);
+        aiChatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleChatSend();
+            }
+        });
+
+        // View Mode Toggles
+        viewControls.querySelectorAll('.view-btn').forEach(button => {
+            button.addEventListener('click', () => switchView(button.dataset.view));
+        });
+        
+        // Device Mode Toggles
+        deviceControls.querySelectorAll('.device-btn').forEach(button => {
+            button.addEventListener('click', () => setDeviceMode(button.dataset.mode));
+        });
+
+        // Initial setup on load
+        window.onload = initApp;
+    </script>
+</body>
+</html>
